@@ -1,6 +1,7 @@
 const fs = require('fs-extra');
 const MongoClient = require('mongodb').MongoClient;
 const express = require('express');
+const cors = require('cors')
 const bodyParser = require('body-parser');
 const fibubot = require('./fibubot');
 
@@ -44,14 +45,17 @@ const client = new MongoClient(mongo_url, { useUnifiedTopology: true });
      * setting up express api server
      */
     app.use(bodyParser.json());
+    app.use(cors());
 
     // returns all information about a user: steamid, tempusid, spamfilter, customcommands, timedcommands
     app.get('/users/:username', async (req, res) => {
+        console.log(`GET request for user: ${req.params.username}`)
+
         const user_info = await db.collection('users').findOne({user: req.params.username});
         const spamFilter = await db.collection('spamFilter').findOne({user: req.params.username});
         const customCommands = await db.collection('commands').findOne({user: req.params.username});
         const timedCommands = await db.collection('timedCommands').findOne({user: req.params.username});
-        return res.json({user_info, spamFilter, customCommands, timedCommands});
+        return res.status(200).json({user_info, spamFilter, customCommands, timedCommands});
     });
 
     // creates a new user
@@ -71,7 +75,7 @@ const client = new MongoClient(mongo_url, { useUnifiedTopology: true });
         });
         await db.collection('spamFilter').insertOne({
             user: req.params.username,
-            cmds: []
+            spam: []
         });
         return res.json('user has been added');
     });
