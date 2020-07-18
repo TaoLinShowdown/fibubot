@@ -197,265 +197,286 @@ module.exports =  class fibubot {
      */
     async onmsg(channel, user, message, msg) {
 
-        // simple ping command
-        if (message === '!ping') {
-            console.log(`${channel}: ${user} said !ping`);
-            this.chatClient.say(channel, 'Pong!');
-        
-        // simple dice roll command
-        } else if (message === '!dice') {
+        if (channel === "#fibubot") {
             console.log(`${channel}: ${user} said ${message}`);
-            const diceRoll = Math.floor(Math.random() * 6) + 1;
-            this.chatClient.say(channel, `@${user} rolled a ${diceRoll}`);
-        
-        // gets uptime of stream, if the stream is live
-        } else if (message === '!uptime') {
-            console.log(`${channel}: ${user} said ${message}`);
-            const stream = await this.twitchClient.helix.streams.getStreamByUserName(channel.slice(1)); // WAIT A COUPLE MINUTES AFTER GOING LIVE FOR THIS TO NOT RETURN NULL
-            
-            if(stream) {
-                const uptime = moment(stream.startDate).fromNow(true);
-                this.chatClient.say(channel, `live for ${uptime}`);
-            } else {
-                this.chatClient.say(channel, `streamer is offline!`);
-            }
-            
-        // gets followage of user to channel, if the user is following
-        } else if (message === '!followage') {
-            console.log(`${channel}: ${user} said ${message}`);
-            const hUser = await this.twitchClient.helix.users.getUserByName(user);
-            const streamer = await this.twitchClient.helix.users.getUserByName(channel.slice(1));
-            const follows = await hUser.follows(streamer);
-            if (follows) {
-                const followInfo = await hUser.getFollowTo(streamer);
-                const followDate = moment(followInfo.followDate).fromNow(true);
-    
-                this.chatClient.say(channel, `${user} has been following for ${followDate}`);
-            }
-    
-        // gets title of stream, or if user is mod, changes title
-        } else if (message.match(/^\!title/g)) {
-            console.log(`${channel}: ${user} said ${message}`);
-            const streamer = await this.twitchClient.helix.users.getUserByName(channel.slice(1));
-            const kChannel = await this.twitchClient.kraken.channels.getChannel(streamer);
-    
-            if (message.split(" ").length > 1 && (msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
-                const newTitle = message.slice(7);
-                const newData = {
-                    "status": newTitle
-                };
-    
-                await this.twitchClient.kraken.channels.updateChannel(kChannel, newData);
-                this.chatClient.say(channel, `title changed to "${newTitle}"`);
-            } else {
-                this.chatClient.say(channel, `${kChannel.status}`);
-            }
-    
-        // registers a new custom command for the channel
-        } else if (message.match(/^\!newcmd/g)) {
-            console.log(`${channel}: ${user} said ${message}`);
-            if (message.split(" ").length > 2 && (msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
-                const commandName = message.split(" ")[1];
-                if (commandName[0] !== "!") {
-                    this.chatClient.say(channel, `format the command like "!newcommand !<command name> <output text>"`);
-                } else {
-                    const commandOutput = message.slice(commandName.length + 9); // 9 = !newcmd + whitespace
-    
-                    let configData = JSON.parse(await fs.readFile('./config.json', 'UTF-8'));
-                    let commandData = configData.commands;
-                    commandData[channel][commandName] = commandOutput;
-                    configData.commands = commandData;
-    
-                    await fs.writeFile('./config.json', JSON.stringify(configData, null, 4), 'UTF-8');
-    
-                    this.chatClient.say(channel, `added new command ${commandName}`);
-                }
-    
-            } else if ((msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
-                this.chatClient.say(channel, `format the command like "!newcommand !<command name> <output text>"`);
-            }
-    
-        
-        /* 
-         * TEMPUS - get rank/srank/drank of user
-         * Tempus | (Soldier) fibu is ranked 186/56963 with 26458 points
-         * Tempus | (Overall) fibu is ranked 315/75729 with 27493 points
-         * Tempus | (Demoman) fibu is ranked 1262/39099 with 1035 points 
-        */
-        } else if (message === '!rank' || message === '!srank' || message === '!drank') {
-            console.log(`${channel}: ${user} said ${message}`);
-            // const tempusId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].tempusId;
-            const col_users = this.db.collection('users');
-            const tempusId = (await col_users.findOne({user: channel.slice(1)})).tempusId;
-            const rankData = await request(`${tempusURI}/players/id/${tempusId}/rank`, {json: true});
-    
-            if (message === '!rank') {
-                const rank = rankData.rank_info;
-                this.chatClient.say(channel, `(Overall) ${channel.slice(1)} is ranked ${rank.rank}/${rank.total_ranked} with ${rank.points} points`);
-            } else if (message === '!srank') {
-                const rank = rankData.class_rank_info['3'];
-                this.chatClient.say(channel, `(Soldier) ${channel.slice(1)} is ranked ${rank.rank}/${rank.total_ranked} with ${rank.points} points`);
-            } else if (message === '!drank') {
-                const rank = rankData.class_rank_info['4'];
-                this.chatClient.say(channel, `(Demoman) ${channel.slice(1)} is ranked ${rank.rank}/${rank.total_ranked} with ${rank.points} points`);
-            }
-        
-    
-        /**
-         * TEMPUS - get map data of user
-         * Tempus | jump_vulc_a2 by Torii
-         * Tempus | Solly T6 | Demo T4
-         */
-        } else if (message === '!map' || message === '!m') {
-            console.log(`${channel}: ${user} said ${message}`);
-            // const steamId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].steamId;
-            const col_users = this.db.collection('users');
-            const steamId = (await col_users.findOne({user: channel.slice(1)})).steamId;
-            const servers = await request(`${tempusURI}/servers/statusList`, {json: true});
-            
-            // for each server, check if playerCount is > 0
-            let flag = 0;
-            for (let server of servers) {
-                if (flag) break;
-                if (server.game_info && server.game_info.playerCount > 0) {
-                    for (let user of server.game_info.users) {
-                        if (user.steamid === steamId) {
-                            const map = server.game_info.currentMap;
-                            const mapInfo = await request(`${tempusURI}/maps/name/${map}/fullOverview`, {json: true});
-                            this.chatClient.say(channel, `${map} | Solly T${mapInfo.tier_info.soldier} | Demo T${mapInfo.tier_info.demoman}`);
-    
-                            flag = 1;
-                            break;
-                        }
+
+            if (message.match(/^\!join/g)) {
+                if (message.split(' ').length !== 3) {
+                    this.chatClient.say(channel, `@${user} make sure to include your Steam ID and Tempus ID in the format !join <steamid> <tempusid>`);
+                } else if (message.split(' ').length === 3) {
+                    let parsedMsg = message.split(' ');
+                    let steamId = parsedMsg[1];
+                    let tempusId = parsedMsg[2];
+
+                    if (!steamId.match(/^STEAM_/)) {
+                        this.chatClient.say(channel, `@${user} your Steam ID is not valid`);
+                    } else if (isNaN(tempusId)) {
+                        this.chatClient.say(channel, `@${user} your Tempus ID is not valid`);
+                    } else {
+
                     }
                 }
+            } else if (message === "!unregister") {
+                
             }
-            if(!flag) {
-                this.chatClient.say(channel, `${channel.slice(1)} isn't in any Tempus server`);
-            }
-            
-    
-        /**
-         * TEMPUS - get swr/dwr of current map
-         * Tempus | (Solly WR) jump_it_final :: 03:55.04 :: Boshy
-         * Tempus | (Demo WR) jump_it_final :: 03:30.48 :: Boshy
-         */
-        } else if (message === '!swr' || message === '!dwr') {
-            console.log(`${channel}: ${user} said ${message}`);
-            // const steamId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].steamId;
-            const col_users = this.db.collection('users');
-            const steamId = (await col_users.findOne({user: channel.slice(1)})).steamId;
-            const servers = await request(`${tempusURI}/servers/statusList`, {json: true});
-            
-            // for each server, check if playerCount is > 0
-            let flag = 0;
-            for (let server of servers) {
-                if (flag) break;
-                if (server.game_info && server.game_info.playerCount > 0) {
-                    for (let user of server.game_info.users) {
-                        if (user.steamid === steamId) {
-                            const map = server.game_info.currentMap;
-                            const mapInfo = await request(`${tempusURI}/maps/name/${map}/fullOverview`, {json: true});
-    
-                            if (message === '!swr') {
-                                const wr = mapInfo.soldier_runs[0];
-                                const time = moment(wr.duration*1000).format('mm:ss.SS');
-                                this.chatClient.say(channel, `(Solly WR) ${map} :: ${time} :: ${wr.name}`);
-                            } else {
-                                const wr = mapInfo.demoman_runs[0];
-                                const time = moment(wr.duration*1000).format('mm:ss.SS');
-                                this.chatClient.say(channel, `(Demo WR) ${map} :: ${time} :: ${wr.name}`);
-                            }
-    
-                            flag = 1;
-                            break;
-                        }
-                    }
-                }
-            }
-            if(!flag) {
-                this.chatClient.say(channel, `${channel.slice(1)} isn't in any Tempus server`);
-            }
-    
-    
-        /**
-         * TEMPUS - get personal best time, ONLY IF YOU ARE IN TOP 50
-         * Tempus | (Solly) Torii is ranked 10/472 on jump_finite_v2 with time: 04:11.60
-         * Tempus | (Demo) hee is ranked 10/551 on jump_finite_v2 with time: 02:04.60
-         */
-        } else if (message === '!stime' || message === '!dtime') {
-            console.log(`${channel}: ${user} said ${message}`);
-            // const steamId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].steamId;
-            const col_users = this.db.collection('users');
-            const steamId = (await col_users.findOne({user: channel.slice(1)})).steamId;
-            const servers = await request(`${tempusURI}/servers/statusList`, {json: true});
-            
-            // for each server, check if playerCount is > 0
-            let flag = 0;
-            let runFound = 0;
-            for (let server of servers) {
-                if (flag) break;
-                if (server.game_info && server.game_info.playerCount > 0) {
-                    for (let user of server.game_info.users) {
-                        if (user.steamid === steamId) {
-                            const map = server.game_info.currentMap;
-                            const mapInfo = await request(`${tempusURI}/maps/name/${map}/zones/typeindex/map/1/records/list`, {json: true});
-    
-                            if (message === '!stime') {
-                                const runs = mapInfo.results.soldier;
-                                for (let run of runs) {
-                                    if (run.player_info.steamid === steamId) {
-                                        const time = moment(run.duration*1000).format('mm:ss.SS');
-                                        this.chatClient.say(channel, `(Solly) ${channel.slice(1)} is ranked ${run.rank} on ${map} with time: ${time}`);
-                                        runFound = 1;
-                                    }
-                                }
-                                
-                            } else {
-                                const runs = mapInfo.results.demoman;
-                                for (let run of runs) {
-                                    if (run.player_info.steamid === steamId) {
-                                        const time = moment(run.duration*1000).format('mm:ss.SS');
-                                        this.chatClient.say(channel, `(Demo) ${channel.slice(1)} is ranked ${run.rank} on ${map} with time: ${time}`);
-                                        runFound = 1;
-                                    }
-                                }
-                            }
-    
-                            flag = 1;
-                            break;
-                        }
-                    }
-                }
-            }
-            if(!flag) {
-                this.chatClient.say(channel, `${channel.slice(1)} isn't in any Tempus server`);
-            } else if (flag && !runFound) {
-                this.chatClient.say(channel, `No run found within top 50`);
-            }
-        
+
         } else {
-    
-            // check for filtered words as last thing
-            const col_spamFilter = this.db.collection('spamFilter');
-            const filterList = (await col_spamFilter.findOne({user: channel.slice(1)})).spam;
-            for (let badword of filterList) {
-                if (message.includes(badword)) {
-                    console.log(`${channel}: ${user} said "${message}" which contains a bad word`);
-                    // this.chatClient.timeout(channel, user, 30, `${user} said the prohibited word ${badword}`);
-                    this.chatClient.say(channel, `${user}, you've been timed out for 30 seconds, stop saying bad words`);
-                    break;
+
+            // simple ping command
+            if (message === '!ping') {
+                console.log(`${channel}: ${user} said !ping`);
+                this.chatClient.say(channel, 'Pong!');
+            
+            // gets uptime of stream, if the stream is live
+            } else if (message === '!uptime') {
+                console.log(`${channel}: ${user} said ${message}`);
+                const stream = await this.twitchClient.helix.streams.getStreamByUserName(channel.slice(1)); // WAIT A COUPLE MINUTES AFTER GOING LIVE FOR THIS TO NOT RETURN NULL
+                
+                if(stream) {
+                    const uptime = moment(stream.startDate).fromNow(true);
+                    this.chatClient.say(channel, `live for ${uptime}`);
+                } else {
+                    this.chatClient.say(channel, `streamer is offline!`);
                 }
-            }
-    
-            // check for custom commands
-            const col_customCommands = this.db.collection('commands');
-            const customCommands = (await col_customCommands.findOne({user: channel.slice(1)})).cmds;
-            for (let commandName in customCommands) {
-                if (message === commandName) {
-                    console.log(`${channel}: ${user} said ${message}`);
-                    this.chatClient.say(channel, `${customCommands[commandName]}`);
-                    break;
+                
+            // gets followage of user to channel, if the user is following
+            } else if (message === '!followage') {
+                console.log(`${channel}: ${user} said ${message}`);
+                const hUser = await this.twitchClient.helix.users.getUserByName(user);
+                const streamer = await this.twitchClient.helix.users.getUserByName(channel.slice(1));
+                const follows = await hUser.follows(streamer);
+                if (follows) {
+                    const followInfo = await hUser.getFollowTo(streamer);
+                    const followDate = moment(followInfo.followDate).fromNow(true);
+        
+                    this.chatClient.say(channel, `${user} has been following for ${followDate}`);
+                }
+        
+            // gets title of stream, or if user is mod, changes title
+            } else if (message.match(/^\!title/g)) {
+                console.log(`${channel}: ${user} said ${message}`);
+                const streamer = await this.twitchClient.helix.users.getUserByName(channel.slice(1));
+                const kChannel = await this.twitchClient.kraken.channels.getChannel(streamer);
+        
+                if (message.split(" ").length > 1 && (msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
+                    const newTitle = message.slice(7);
+                    const newData = {
+                        "status": newTitle
+                    };
+        
+                    await this.twitchClient.kraken.channels.updateChannel(kChannel, newData);
+                    this.chatClient.say(channel, `title changed to "${newTitle}"`);
+                } else {
+                    this.chatClient.say(channel, `${kChannel.status}`);
+                }
+        
+            // registers a new custom command for the channel
+            } else if (message.match(/^\!newcmd/g)) {
+                console.log(`${channel}: ${user} said ${message}`);
+                if (message.split(" ").length > 2 && (msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
+                    const commandName = message.split(" ")[1];
+                    if (commandName[0] !== "!") {
+                        this.chatClient.say(channel, `format the command like "!newcommand !<command name> <output text>"`);
+                    } else {
+                        const commandOutput = message.slice(commandName.length + 9); // 9 = !newcmd + whitespace
+        
+                        const col_customCommands = this.db.collection('commands');
+                        const commandData = (await col_customCommands.findOne({user: channel.slice(1)})).cmds;
+                        commandData[commandName] = commandOutput;
+
+                        col_customCommands.updateOne(
+                            { user: channel.slice(1) },
+                            { $set: { cmds: commandData } }
+                        );
+        
+                        this.chatClient.say(channel, `added new command ${commandName}`);
+                    }
+        
+                } else if ((msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
+                    this.chatClient.say(channel, `format the command like "!newcommand !<command name> <output text>"`);
+                }
+        
+            
+            /* 
+            * TEMPUS - get rank/srank/drank of user
+            * Tempus | (Soldier) fibu is ranked 186/56963 with 26458 points
+            * Tempus | (Overall) fibu is ranked 315/75729 with 27493 points
+            * Tempus | (Demoman) fibu is ranked 1262/39099 with 1035 points 
+            */
+            } else if (message === '!rank' || message === '!srank' || message === '!drank') {
+                console.log(`${channel}: ${user} said ${message}`);
+                // const tempusId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].tempusId;
+                const col_users = this.db.collection('users');
+                const tempusId = (await col_users.findOne({user: channel.slice(1)})).tempusId;
+                const rankData = await request(`${tempusURI}/players/id/${tempusId}/rank`, {json: true});
+        
+                if (message === '!rank') {
+                    const rank = rankData.rank_info;
+                    this.chatClient.say(channel, `(Overall) ${channel.slice(1)} is ranked ${rank.rank}/${rank.total_ranked} with ${rank.points} points`);
+                } else if (message === '!srank') {
+                    const rank = rankData.class_rank_info['3'];
+                    this.chatClient.say(channel, `(Soldier) ${channel.slice(1)} is ranked ${rank.rank}/${rank.total_ranked} with ${rank.points} points`);
+                } else if (message === '!drank') {
+                    const rank = rankData.class_rank_info['4'];
+                    this.chatClient.say(channel, `(Demoman) ${channel.slice(1)} is ranked ${rank.rank}/${rank.total_ranked} with ${rank.points} points`);
+                }
+            
+        
+            /**
+             * TEMPUS - get map data of user
+             * Tempus | jump_vulc_a2 by Torii
+             * Tempus | Solly T6 | Demo T4
+             */
+            } else if (message === '!map' || message === '!m') {
+                console.log(`${channel}: ${user} said ${message}`);
+                // const steamId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].steamId;
+                const col_users = this.db.collection('users');
+                const steamId = (await col_users.findOne({user: channel.slice(1)})).steamId;
+                const servers = await request(`${tempusURI}/servers/statusList`, {json: true});
+                
+                // for each server, check if playerCount is > 0
+                let flag = 0;
+                for (let server of servers) {
+                    if (flag) break;
+                    if (server.game_info && server.game_info.playerCount > 0) {
+                        for (let user of server.game_info.users) {
+                            if (user.steamid === steamId) {
+                                const map = server.game_info.currentMap;
+                                const mapInfo = await request(`${tempusURI}/maps/name/${map}/fullOverview`, {json: true});
+                                this.chatClient.say(channel, `${map} | Solly T${mapInfo.tier_info.soldier} | Demo T${mapInfo.tier_info.demoman}`);
+        
+                                flag = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if(!flag) {
+                    this.chatClient.say(channel, `${channel.slice(1)} isn't in any Tempus server`);
+                }
+                
+        
+            /**
+             * TEMPUS - get swr/dwr of current map
+             * Tempus | (Solly WR) jump_it_final :: 03:55.04 :: Boshy
+             * Tempus | (Demo WR) jump_it_final :: 03:30.48 :: Boshy
+             */
+            } else if (message === '!swr' || message === '!dwr') {
+                console.log(`${channel}: ${user} said ${message}`);
+                // const steamId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].steamId;
+                const col_users = this.db.collection('users');
+                const steamId = (await col_users.findOne({user: channel.slice(1)})).steamId;
+                const servers = await request(`${tempusURI}/servers/statusList`, {json: true});
+                
+                // for each server, check if playerCount is > 0
+                let flag = 0;
+                for (let server of servers) {
+                    if (flag) break;
+                    if (server.game_info && server.game_info.playerCount > 0) {
+                        for (let user of server.game_info.users) {
+                            if (user.steamid === steamId) {
+                                const map = server.game_info.currentMap;
+                                const mapInfo = await request(`${tempusURI}/maps/name/${map}/fullOverview`, {json: true});
+        
+                                if (message === '!swr') {
+                                    const wr = mapInfo.soldier_runs[0];
+                                    const time = moment(wr.duration*1000).format('mm:ss.SS');
+                                    this.chatClient.say(channel, `(Solly WR) ${map} :: ${time} :: ${wr.name}`);
+                                } else {
+                                    const wr = mapInfo.demoman_runs[0];
+                                    const time = moment(wr.duration*1000).format('mm:ss.SS');
+                                    this.chatClient.say(channel, `(Demo WR) ${map} :: ${time} :: ${wr.name}`);
+                                }
+        
+                                flag = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if(!flag) {
+                    this.chatClient.say(channel, `${channel.slice(1)} isn't in any Tempus server`);
+                }
+        
+        
+            /**
+             * TEMPUS - get personal best time, ONLY IF YOU ARE IN TOP 50
+             * Tempus | (Solly) Torii is ranked 10/472 on jump_finite_v2 with time: 04:11.60
+             * Tempus | (Demo) hee is ranked 10/551 on jump_finite_v2 with time: 02:04.60
+             */
+            } else if (message === '!stime' || message === '!dtime') {
+                console.log(`${channel}: ${user} said ${message}`);
+                // const steamId = JSON.parse(await fs.readFile('./config.json', 'UTF-8')).users[channel].steamId;
+                const col_users = this.db.collection('users');
+                const steamId = (await col_users.findOne({user: channel.slice(1)})).steamId;
+                const servers = await request(`${tempusURI}/servers/statusList`, {json: true});
+                
+                // for each server, check if playerCount is > 0
+                let flag = 0;
+                let runFound = 0;
+                for (let server of servers) {
+                    if (flag) break;
+                    if (server.game_info && server.game_info.playerCount > 0) {
+                        for (let user of server.game_info.users) {
+                            if (user.steamid === steamId) {
+                                const map = server.game_info.currentMap;
+                                const mapInfo = await request(`${tempusURI}/maps/name/${map}/zones/typeindex/map/1/records/list`, {json: true});
+        
+                                if (message === '!stime') {
+                                    const runs = mapInfo.results.soldier;
+                                    for (let run of runs) {
+                                        if (run.player_info.steamid === steamId) {
+                                            const time = moment(run.duration*1000).format('mm:ss.SS');
+                                            this.chatClient.say(channel, `(Solly) ${channel.slice(1)} is ranked ${run.rank} on ${map} with time: ${time}`);
+                                            runFound = 1;
+                                        }
+                                    }
+                                    
+                                } else {
+                                    const runs = mapInfo.results.demoman;
+                                    for (let run of runs) {
+                                        if (run.player_info.steamid === steamId) {
+                                            const time = moment(run.duration*1000).format('mm:ss.SS');
+                                            this.chatClient.say(channel, `(Demo) ${channel.slice(1)} is ranked ${run.rank} on ${map} with time: ${time}`);
+                                            runFound = 1;
+                                        }
+                                    }
+                                }
+        
+                                flag = 1;
+                                break;
+                            }
+                        }
+                    }
+                }
+                if(!flag) {
+                    this.chatClient.say(channel, `${channel.slice(1)} isn't in any Tempus server`);
+                } else if (flag && !runFound) {
+                    this.chatClient.say(channel, `No run found within top 50`);
+                }
+            
+            } else {
+        
+                // check for filtered words as last thing
+                const col_spamFilter = this.db.collection('spamFilter');
+                const filterList = (await col_spamFilter.findOne({user: channel.slice(1)})).spam;
+                for (let badword of filterList) {
+                    if (message.includes(badword)) {
+                        console.log(`${channel}: ${user} said "${message}" which contains a bad word`);
+                        this.chatClient.say(channel, `${user}, you've been timed out for 30 seconds, stop saying bad words`);
+                        break;
+                    }
+                }
+        
+                // check for custom commands
+                const col_customCommands = this.db.collection('commands');
+                const customCommands = (await col_customCommands.findOne({user: channel.slice(1)})).cmds;
+                for (let commandName in customCommands) {
+                    if (message === commandName) {
+                        console.log(`${channel}: ${user} said ${message}`);
+                        this.chatClient.say(channel, `${customCommands[commandName]}`);
+                        break;
+                    }
                 }
             }
         }
