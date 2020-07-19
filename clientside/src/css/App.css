@@ -1,0 +1,166 @@
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap');
+
+body {
+    font-family: 'Montserrat', sans-serif;
+    background-color: #EFEFEFEF;
+}
+
+#login {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 99%;
+    height: 98%;
+    font-weight: bold;
+}
+#login-logo {
+    margin-bottom: 40px;
+    font-size: 60px;
+}
+#channel-name-submit {
+    background-color: #6441a5;
+}
+#login-github-link {
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    top: 90%;
+}
+#login-github-link a img {
+    width: 40px;
+    height: 40px;
+}
+#login-github-link:hover {
+    cursor: pointer;
+}
+#login-error {
+    margin-top: 20px;
+}
+
+#navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 2;  
+
+    background-color: #6441a5;
+    padding: 10px;
+    padding-left: 15px;
+
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    align-items: center;
+
+    font-size: 30px;
+    font-weight: bold;
+    color: white;
+}
+#navbar-logo {
+    z-index: 3;
+}
+#navbar-github-link * {
+    width: 30px;
+    height: 30px;
+    margin-left: 10px;
+    top: 12px;
+    position: absolute;
+    z-index: 3;
+}
+#navbar-github-link:hover {
+    cursor: pointer;
+}
+#navbar-buttons {
+    margin-right: 25px;
+    z-index: 2;
+}
+#navbar-button-update {
+    z-index: inherit;
+    background-color: #7d6fbe;
+    font-weight: bold;
+    color: #311a64;
+}
+#navbar-user-name {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    width: 100%;
+    height: 57px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+#name {
+    max-width: 300px;
+    overflow: hidden;
+    font-weight: normal;
+    margin-right: 50px;
+}
+
+#home {
+    position: relative;
+    top: 60px;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-evenly;
+
+    border-radius: 15px;
+}
+#home-basic {
+    padding: 20px;
+    margin: 15px;
+    height: 113px;
+    width: 80%;
+    border-radius: 8px;
+    box-shadow: 1px 1px 5px rgb(155, 155, 155);
+    background-color: #ececec;
+
+    display: flex;
+    justify-content: space-evenly;
+}
+#home-basic-id {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100%;
+    width: 290px;
+    margin-right: 10px;
+}
+
+.commands {
+    border-radius: 8px;
+    box-shadow: 1px 1px 5px rgb(155, 155, 155);
+    background-color: #ececec;
+    width: 80%;
+    padding: 20px;
+    margin: 20px;
+    font-weight: bold;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-evenly;
+    align-items: center;
+}
+.commands-item {
+    display: flex;
+    /* margin: 3px; */
+}
+.commands-title {
+    margin-bottom: 10px;
+    font-size: 20px;
+}
+.commands-input {
+    width: 120px !important;
+}
+.commands-output {
+    width: 420px !important;
+}
+.commands-add-button {
+    margin-top: 10px !important;
+}
