@@ -113,17 +113,6 @@ const client = new MongoClient(mongo_url, { useUnifiedTopology: true });
         return res.status(200).json({user_info, spamFilter, customCommandsN, timedCommandsN});
     });
 
-    // removes a user
-    app.delete('/deleteuser/:username', async (req, res) => {
-        await db.collection('users').deleteOne({user: req.params.username});
-        await db.collection('commands').deleteOne({user: req.params.username});
-        await db.collection('timedCommands').deleteOne({user: req.params.username});
-        await db.collection('spamFilter').deleteOne({user: req.params.username});
-        return res.json('user has been deleted');
-    });
-
-    // updates a user
-
     app.listen(port, () => {
         console.log(`api listening to port ${port}`);
     })

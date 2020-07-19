@@ -196,6 +196,7 @@ module.exports =  class fibubot {
      * @param {object} msg 
      */
     async onmsg(channel, user, message, msg) {
+        console.log(message);
 
         if (channel === "#fibubot") {
             console.log(`${channel}: ${user} said ${message}`);
@@ -204,6 +205,7 @@ module.exports =  class fibubot {
                 if (message.split(' ').length !== 3) {
                     this.chatClient.say(channel, `@${user} make sure to include your Steam ID and Tempus ID in the format !join <steamid> <tempusid>`);
                 } else if (message.split(' ').length === 3) {
+
                     let parsedMsg = message.split(' ');
                     let steamId = parsedMsg[1];
                     let tempusId = parsedMsg[2];
@@ -213,11 +215,52 @@ module.exports =  class fibubot {
                     } else if (isNaN(tempusId)) {
                         this.chatClient.say(channel, `@${user} your Tempus ID is not valid`);
                     } else {
+                        // follow the user's channel
+                        const hUser = await this.twitchClient.helix.users.getUserByName(user);
+                        hUser.follow();
 
+                        // check if user is already in the database
+                        const user_in_db = await this.db.collection('users').findOne({user: user});
+                        if(user_in_db) {
+                            await this.db.collection('users').updateOne(
+                                { user: user },
+                                { $set: { tempusId: tempusId, steamId: steamId } }
+                            );
+                            this.chatClient.say(channel, `@${user} updated successfully`);
+                        } else {
+                            await this.db.collection('users').insertOne({
+                                user: user,
+                                tempusId: tempusId,
+                                steamId: steamId
+                            });
+                            await this.db.collection('commands').insertOne({
+                                user: user,
+                                cmds: {}
+                            });
+                            await this.db.collection('timedCommands').insertOne({
+                                user: user,
+                                cmds: []
+                            });
+                            await this.db.collection('spamFilter').insertOne({
+                                user: user,
+                                spam: []
+                            });
+                            this.chatClient.say(channel, `@${user} joined successfully`);
+                        }
                     }
                 }
             } else if (message === "!unregister") {
-                
+                const user_in_db = await this.db.collection('users').findOne({user: user});
+                if(user_in_db) {
+                    await this.db.collection('users').deleteOne({user: user});
+                    await this.db.collection('commands').deleteOne({user: user});
+                    await this.db.collection('timedCommands').deleteOne({user: user});
+                    await this.db.collection('spamFilter').deleteOne({user: user});
+
+                    this.chatClient.say(channel, `@${user} unregistered successfully`);
+                } else {
+                    this.chatClient.say(channel, `@${user} you haven't registered yet`);
+                }
             }
 
         } else {
