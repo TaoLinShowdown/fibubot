@@ -4,7 +4,7 @@ tempus ranking, times, and current map
 
 
 ### For those who want full features and all commands
-1. Download the fibubot-client at <link>
+1. Download the fibubot-client at https://www.dropbox.com/s/dbu1j20vg6hw0ra/fibubot-client.zip?dl=0
 2. Run fibubot.exe
 3. Enter your twitch username and click the login button
 4. At the top, toggle the **Tempus Only** switch to off
