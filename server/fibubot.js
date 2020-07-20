@@ -196,7 +196,6 @@ module.exports =  class fibubot {
      * @param {object} msg 
      */
     async onmsg(channel, user, message, msg) {
-        console.log(message);
 
         if (channel === "#fibubot") {
             console.log(`${channel}: ${user} said ${message}`);
@@ -245,6 +244,7 @@ module.exports =  class fibubot {
                                 user: user,
                                 spam: []
                             });
+                            await this.chatClient.join(user);
                             this.chatClient.say(channel, `@${user} joined successfully`);
                         }
                     }
@@ -256,6 +256,8 @@ module.exports =  class fibubot {
                     await this.db.collection('commands').deleteOne({user: user});
                     await this.db.collection('timedCommands').deleteOne({user: user});
                     await this.db.collection('spamFilter').deleteOne({user: user});
+
+                    this.chatClient.part(user);
 
                     this.chatClient.say(channel, `@${user} unregistered successfully`);
                 } else {
@@ -506,6 +508,7 @@ module.exports =  class fibubot {
                 for (let badword of filterList) {
                     if (message.includes(badword)) {
                         console.log(`${channel}: ${user} said "${message}" which contains a bad word`);
+                        await this.chatClient.timeout(channel, user, 30);
                         this.chatClient.say(channel, `${user}, you've been timed out for 30 seconds, stop saying bad words`);
                         break;
                     }
