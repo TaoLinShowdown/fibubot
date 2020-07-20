@@ -38,8 +38,8 @@ const client = new MongoClient(mongo_url, { useUnifiedTopology: true });
     await bot.join('fibubot');
     const users = await col_users.find().toArray();
     for (let user of users) {
-        // await bot.subscribeToStreamChanges(user.user);
-        await bot.join('fibbbby');
+        await bot.subscribeToStreamChanges(user.user);
+        // await bot.join(user.user);
     }
 
     /**

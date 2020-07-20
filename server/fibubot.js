@@ -1,6 +1,7 @@
 const TwitchClient = require('twitch').default;
 const ChatClient = require('twitch-chat-client').default;
 const WebHookListener = require('twitch-webhooks').default;
+const SimpleAdapter = require('twitch-webhooks').default;
 const MongoClient = require('mongodb').MongoClient;
 const moment = require('moment');
 const fs = require('fs-extra');
@@ -10,7 +11,7 @@ const tempusURI = 'http://tempus.xyz/api';
 const mongo_url = 'mongodb://localhost:27017';
 const mongo_db_name = 'fibubot';
 
-module.exports =  class fibubot {
+module.exports = class fibubot {
 
     /**
      * just initiates twitchClient and chatClient variables
@@ -21,6 +22,7 @@ module.exports =  class fibubot {
         this.listener;
 
         this.subs = {};
+        this.streams = {};
         this.timedCommands = {};
     }
 
@@ -92,10 +94,13 @@ module.exports =  class fibubot {
      * creates webhook listener
      */
     async createListener() {
+        // const listener = await WebHookListener.create(this.twitchClient, {
+        //     hostName: 'd8b82ba148c3.ngrok.io',
+        //     port: 8090,
+        // });
         const listener = await WebHookListener.create(this.twitchClient, {
-            hostName: 'd8b82ba148c3.ngrok.io',
-            port: 8090,
-            reverseProxy: { port: 443, ssl: true }
+            hostName: 'ec2-3-129-60-241.us-east-2.compute.amazonaws.com',
+            port: 8090
         });
         listener.listen();
         return listener;
@@ -107,18 +112,22 @@ module.exports =  class fibubot {
      */
     async subscribeToStreamChanges(user) {
         const userId = (await this.twitchClient.helix.users.getUserByName(user.slice(1))).id;
+        const prevStream = await this.twitchClient.helix.streams.getStreamByUserId(userId);
         const sub = await this.listener.subscribeToStreamChanges(userId, async (stream) => {
             if(stream) {
-                console.log(`${stream.userDisplayName} just went live with title: ${stream.title}`);
-                await this.join(user);
-                await this.createIntervals(user);
+                if(!this.streams[user]) {
+                    console.log(`${stream.userDisplayName} just went live with title: ${stream.title}`);
+                    // await this.join(user);
+                    // await this.createIntervals(user);
+                }
             } else {
                 console.log(`${user.slice(1)} just went offline`);
-                await this.part(user);
-                await this.stopIntervals(user);
+                // await this.part(user);
+                // await this.stopIntervals(user);
             }
+            this.streams[user] = stream;
         });
-        await sub.start();
+        this.streams[user] = prevStream;
         this.subs[user] = sub;
         console.log(`subscribed to stream changes for ${user}`);
     }
