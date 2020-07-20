@@ -2,10 +2,12 @@ import React, { Component } from 'react'
 import TextField from '@material-ui/core/TextField'
 import Button from '@material-ui/core/Button'
 import CircularProgress from '@material-ui/core/CircularProgress';
+import Switch from '@material-ui/core/Switch';
+import FormControlLabel from '@material-ui/core/FormControlLabel';
 import AddIcon from '@material-ui/icons/Add'
 import DeleteIcon from '@material-ui/icons/Delete';
 
-const api_url = "http://ec2-3-129-7-4.us-east-2.compute.amazonaws.com:8091";
+const api_url = "http://ec2-3-129-60-241.us-east-2.compute.amazonaws.com:8091";
 
 class Home extends Component{
 
@@ -17,6 +19,7 @@ class Home extends Component{
 
             user: user_info.user,
             tempusId: user_info.tempusId,
+            tempusOnly: user_info.tempusOnly,
             steamId: user_info.steamId,
             spam: spamFilter.spam,
             customCmds: Object.entries(customCommands.cmds),
@@ -44,6 +47,7 @@ class Home extends Component{
         let data = {
             tempusId: this.state.tempusId,
             steamId: this.state.steamId,
+            tempusOnly: this.state.tempusOnly,
             spam: this.state.spam,
             customCommands,
             timedCommands
@@ -167,6 +171,10 @@ class Home extends Component{
         this.setState({ timedCmds: newTimedCmds });
     }
 
+    handleTempusOnly = (e) => {
+        this.setState({ tempusOnly: !this.state.tempusOnly });
+    }
+
     render() {
         let cmd_ctr = 0;
         let tmd_ctr = 0;
@@ -191,6 +199,15 @@ class Home extends Component{
                 </div>
 
                 <div id="home">
+
+                    <div id="tempusOnly-radio">
+                        <FormControlLabel
+                            value="tempusOnly"
+                            control={<Switch color="primary" checked={this.state.tempusOnly} onChange={this.handleTempusOnly} />}
+                            label="Tempus Only"
+                            labelPlacement="start"
+                            />
+                    </div>
 
                     <div id="home-basic">
                         <div id="home-basic-id">

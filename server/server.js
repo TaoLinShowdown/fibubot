@@ -38,8 +38,8 @@ const client = new MongoClient(mongo_url, { useUnifiedTopology: true });
     await bot.join('fibubot');
     const users = await col_users.find().toArray();
     for (let user of users) {
-        await bot.subscribeToStreamChanges(user.user);
-        // await bot.join(user.user);
+        // await bot.subscribeToStreamChanges(user.user);
+        await bot.join(user.user);
     }
 
     /**
@@ -59,36 +59,14 @@ const client = new MongoClient(mongo_url, { useUnifiedTopology: true });
         return res.status(200).json({user_info, spamFilter, customCommands, timedCommands});
     });
 
-    // creates a new user
-    app.put('/newuser/:username', async (req, res) => {
-        await db.collection('users').insertOne({
-            user: req.params.username,
-            tempusId: null,
-            steamId: null
-        });
-        await db.collection('commands').insertOne({
-            user: req.params.username,
-            cmds: {}
-        });
-        await db.collection('timedCommands').insertOne({
-            user: req.params.username,
-            cmds: []
-        });
-        await db.collection('spamFilter').insertOne({
-            user: req.params.username,
-            spam: []
-        });
-        return res.json('user has been added');
-    });
-
     // updates a user
     app.post('/updateuser/:username', async (req, res) => {
         // console.log(req.body);
-        const { tempusId, steamId, spam, customCommands, timedCommands } = req.body;
+        const { tempusId, steamId, tempusOnly, spam, customCommands, timedCommands } = req.body;
 
         await db.collection('users').updateOne(
             { user: req.params.username }, 
-            { $set: { tempusId, steamId } }
+            { $set: { tempusId, steamId, tempusOnly } }
         );
 
         await db.collection('spamFilter').updateOne(

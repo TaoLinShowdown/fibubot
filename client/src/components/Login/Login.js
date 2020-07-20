@@ -3,12 +3,12 @@ import TextField from '@material-ui/core/TextField';
 import Button from '@material-ui/core/Button';
 // import shell from 'electron';
 
-const api_url = "http://ec2-3-129-7-4.us-east-2.compute.amazonaws.com:8091"
+const api_url = "http://ec2-3-129-60-241.us-east-2.compute.amazonaws.com:8091"
 
 class Login extends Component{
 
     state = {
-        inputtedChannelName: "fibbbby"
+        inputtedChannelName: ""
     }
 
     handleChange = (e) => {

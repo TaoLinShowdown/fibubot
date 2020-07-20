@@ -117,13 +117,13 @@ module.exports = class fibubot {
             if(stream) {
                 if(!this.streams[user]) {
                     console.log(`${stream.userDisplayName} just went live with title: ${stream.title}`);
-                    // await this.join(user);
-                    // await this.createIntervals(user);
+                    await this.join(user);
+                    await this.createIntervals(user);
                 }
             } else {
                 console.log(`${user.slice(1)} just went offline`);
-                // await this.part(user);
-                // await this.stopIntervals(user);
+                await this.part(user);
+                await this.stopIntervals(user);
             }
             this.streams[user] = stream;
         });
@@ -239,7 +239,8 @@ module.exports = class fibubot {
                             await this.db.collection('users').insertOne({
                                 user: user,
                                 tempusId: tempusId,
-                                steamId: steamId
+                                steamId: steamId,
+                                tempusOnly: true
                             });
                             await this.db.collection('commands').insertOne({
                                 user: user,
@@ -276,13 +277,15 @@ module.exports = class fibubot {
 
         } else {
 
+            const tempusOnly = (await this.db.collection('users').findOne({user: user})).tempusOnly;
+
             // simple ping command
-            if (message === '!ping') {
+            if (message === '!ping' && !tempusOnly) {
                 console.log(`${channel}: ${user} said !ping`);
                 this.chatClient.say(channel, 'Pong!');
             
             // gets uptime of stream, if the stream is live
-            } else if (message === '!uptime') {
+            } else if (message === '!uptime' && !tempusOnly) {
                 console.log(`${channel}: ${user} said ${message}`);
                 const stream = await this.twitchClient.helix.streams.getStreamByUserName(channel.slice(1)); // WAIT A COUPLE MINUTES AFTER GOING LIVE FOR THIS TO NOT RETURN NULL
                 
@@ -294,7 +297,7 @@ module.exports = class fibubot {
                 }
                 
             // gets followage of user to channel, if the user is following
-            } else if (message === '!followage') {
+            } else if (message === '!followage' && !tempusOnly) {
                 console.log(`${channel}: ${user} said ${message}`);
                 const hUser = await this.twitchClient.helix.users.getUserByName(user);
                 const streamer = await this.twitchClient.helix.users.getUserByName(channel.slice(1));
@@ -307,7 +310,7 @@ module.exports = class fibubot {
                 }
         
             // gets title of stream, or if user is mod, changes title
-            } else if (message.match(/^\!title/g)) {
+            } else if (message.match(/^\!title/g) && !tempusOnly) {
                 console.log(`${channel}: ${user} said ${message}`);
                 const streamer = await this.twitchClient.helix.users.getUserByName(channel.slice(1));
                 const kChannel = await this.twitchClient.kraken.channels.getChannel(streamer);
@@ -325,7 +328,7 @@ module.exports = class fibubot {
                 }
         
             // registers a new custom command for the channel
-            } else if (message.match(/^\!newcmd/g)) {
+            } else if (message.match(/^\!newcmd/g) && !tempusOnly) {
                 console.log(`${channel}: ${user} said ${message}`);
                 if (message.split(" ").length > 2 && (msg.userInfo.badges.has('moderator') || msg.userInfo.badges.has('broadcaster'))) {
                     const commandName = message.split(" ")[1];
@@ -509,7 +512,7 @@ module.exports = class fibubot {
                     this.chatClient.say(channel, `No run found within top 50`);
                 }
             
-            } else {
+            } else if (!tempusOnly) {
         
                 // check for filtered words as last thing
                 const col_spamFilter = this.db.collection('spamFilter');

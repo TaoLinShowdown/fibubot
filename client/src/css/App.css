@@ -164,3 +164,7 @@ body {
 .commands-add-button {
     margin-top: 10px !important;
 }
+
+#tempusOnly-radio {
+    font-weight: bold;
+}
