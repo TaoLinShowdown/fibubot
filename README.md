@@ -11,3 +11,4 @@ tempus ranking, times, and current map
 5. Click the update button on top right
 
 You can now use all other basic commands and features, such as a basic spam filter, custom commands, and timed messages
+*for the spam filter, separate each blacklisted word with a comma like badword1, badword2, badword3*
